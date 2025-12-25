@@ -4,4 +4,7 @@ import json
 import client
 import prompts
 
-print(client.run("tutor", "What is seven plus six"))
+
+data = client.run("flashcard_generator", "Generate me ten flashcards for upper level math terms.")
+for card in data["flashcards"]:
+    print(card["front"])
