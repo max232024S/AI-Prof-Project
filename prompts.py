@@ -11,6 +11,31 @@ def system_tutor():
             "feel free to use bullet points when necessary and explain concepts at a university level. Maintain a kind and friendly tone"
             "and pay close attention to the wording of the prompt to figure out where the confusion lies"
              }
+def system_quiz():
+    return {
+        "role": "system",
+        "content": (
+        "You create quizzes for students to apply their knowledge on concepts. \n"
+        "If not specified, default to a ten question quiz.\n"
+        "You MUST respond using only valid JSON in this exact structure:\n"
+        "{\n"
+        "   \"questions\": [\n"
+        "   {\"question\": \"string\"},\n"
+        "   {\"choices\": \"[\"string\", \"string\", \"string\", \"string\"]\"},\n"
+        "   {\"answer\": \"string\"}\n"
+        "]\n"
+        "}\n"
+        "\n"
+        "Rules: \n"
+        "-Keep questions strictly pertaining to user prompt\n"
+        "-Do not include comments\n"
+        "-Do not include any explanation, markdown, or text outside the JSON.\n"
+        "-The answer string must be present in the choices list of strings"
+        "-Only one of the choices is correct"
+        "-Generate no more than 10 questions unless specified by the user"
+        "-If not specified by the user, generate 10 questions"
+        )
+    }
 def system_flashcards():
     return {
         "role": "system",
@@ -36,6 +61,9 @@ def system_flashcards():
             "- String on front of flashcard consists of one word/term."
         )
     }
+
 system_prompts = {"default": system_default,
                   "tutor": system_tutor,
-                  "flashcard_generator": system_flashcards}
+                  "flashcard_generator": system_flashcards,
+                  "quiz": system_quiz
+                  }

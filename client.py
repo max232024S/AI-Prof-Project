@@ -32,6 +32,6 @@ def run(role, content, model="openai/gpt-4o"):
     )
 
     response.raise_for_status()  # crashes loudly if request failed
-    raw = response.json()["choices"][0]["message"]["content"]
-    data = json.loads(raw)
+    raw = response.json()["choices"][0]["message"]["content"] #raw json string format
+    data = json.loads(raw) #converted to python dictionary and returned
     return data
