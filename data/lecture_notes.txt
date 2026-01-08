@@ -1,0 +1,32 @@
+Lecture 1: The Foundations of AI
+Date: January 12, 2026 Topic: Intelligence and the Turing Test
+
+Definition of AI: According to Dr. Sarah Chen in our primary textbook, AI is defined as the study of agents that receive percepts from the environment and perform actions.
+
+The Turing Test: Proposed by Alan Turing in 1950. A machine passes if a human interrogator cannot distinguish its responses from those of another human.
+
+Weak AI vs. Strong AI:
+
+Weak AI: Designed for specific tasks (e.g., Chess, image recognition).
+
+Strong AI (AGI): General intelligence that matches or exceeds human cognitive abilities.
+
+Lecture 2: Neural Network Basics
+Date: January 14, 2026 Topic: The Artificial Neuron
+
+Structure: Inspired by the biological brain. It consists of inputs, weights, a bias, and an activation function.
+
+The Perceptron: The simplest form of a neural network. It takes binary inputs and produces a single binary output based on a threshold.
+
+Coding Lab: This week, you will use the AI Research Lab platform to build your first single-layer perceptron. Remember the late policy: if you miss the midnight deadline on Friday, it's a 10% deduction per day.
+
+Activation Functions: Common types include Sigmoid, Tanh, and ReLU (Rectified Linear Unit). ReLU is currently the industry standard for deep learning because it solves the "vanishing gradient" problem.
+
+Why these are good for testing:
+Cross-Reference Check: Lecture 2 mentions the "Late Policy" and "AI Research Lab." If you search for "What happens if I turn in my lab late?", your similarity search should pull both the Syllabus (Late Work Policy) and Lecture 2 (Coding Lab notes).
+
+Specific Terms: Searching for "ReLU" or "Turing" should return specific lecture notes but not the syllabus, as those terms aren't in the syllabus.
+
+Instructor Context: Searching for "Professor Gemini" or "Office Hours" should point primarily to the syllabus.
+
+Would you like me to generate a third set of notes focused on "Ethics in AI" to give your database more variety?
