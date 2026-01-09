@@ -85,7 +85,7 @@ class db:
                 INNER JOIN Conversation ON Message.conversation_id = Conversation.conversation_id
                 INNER JOIN User ON Conversation.user_id = User.user_id
                 WHERE USER.user_id = ? 
-                ORDER BY message_id DESC LIMIT 10 ''',
+                ORDER BY message_id DESC LIMIT 8 ''',
                 (user_id,))
                 mem = cursor.fetchall()
                 mem = mem[::-1] #reverse to feed it the most recent queries/responses first
@@ -181,8 +181,9 @@ class db:
         cursor.execute("DELETE FROM Embedding")
         cursor.execute("DELETE FROM Chunk")
         cursor.execute("DELETE FROM Document")
+        cursor.execute("DELETE FROM Message")
+        cursor.execute("DELETE FROM Conversation")
         conn.commit()
         conn.close()
         print("Database purged. Ready for fresh data.")
         
-#db.clear_database()

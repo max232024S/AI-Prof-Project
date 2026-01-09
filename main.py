@@ -6,6 +6,8 @@ import prompts
 from database.database import db
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import numpy as np
+import pymupdf
+
 
 
 db.construct_db() #construct schema
@@ -25,16 +27,24 @@ def chat():
 
         db.save_message(conversation_id, "user", user_input)
         context = db.load_memory(1) #hard coded user id
-        context_string = "\n\n--- SOURCE MESSAGE ---\n".join([message['message_text'] for message in context])
-        system_context = str(context) #primitive, change later and parse through commas brackets
+        
+        context_prompt = ""
+        for message in context:
+            role = message['message_role']
+            content = message['message_text']
+            context_prompt += role + ": " + content + " \n -- SOURCE MESSAGE -- \n "
+
+            
+
+
         input_embedding_list = client.embed(user_input) #embed user input
         input_embedding = input_embedding_list[0]
         all_embeddings = db.load_embeddings(1) #load db embeddings for hardcoded user id
-        similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 7)
+        similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 3)
         similar_chunks = db.load_similar_chunks(1, similar_chunk_ids)
-        similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n".join([chunk['chunk_text'] for chunk in similar_chunks])
+        similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([chunk['chunk_text'] for chunk in similar_chunks])
 
-        prompt = context_string + similar_chunk_string
+        prompt = context_prompt + similar_chunk_string
         
 
         response = client.run("chat", prompt)
@@ -44,11 +54,24 @@ def chat():
 
 
 def add_source(source):
+    print(type(source))
+    if source is None:
+        raise ValueError("Must enter source file")
+    
+    if not isinstance(source, str):
+        raise TypeError("File not in string format") #checks if source file is a string
+    
+    if not source.strip(' ').endswith('.pdf'): #checks if file is pdf
+        raise ValueError("Must be pdf file")
+
     document_id = db.create_document(1, source, 'syllabus')
-    chunks = chunk_text(source)
-    print(f"Type of first chunk is {type(chunks[0])}")
-    chunk_id_list = db.save_chunk(document_id, chunks)
-    embeddings = client.embed(chunks)
+    pdf_text = pdf_to_txt(source)
+    print(type(pdf_text))
+    print(pdf_text)
+    chunks = chunk_text('data/output.txt')
+
+    chunk_id_list = db.save_chunk(document_id, chunks) #save chunk ids to db
+    embeddings = client.embed(chunks) #embed all chunks in source
     for embedding,chunk_id in zip(embeddings, chunk_id_list):
         np_embedding = np.array(embedding).astype(np.float32)
         vector_blob = np_embedding.tobytes()
@@ -71,7 +94,8 @@ def k_similar_chunks(input_vector, embeddings, k): #embeddings is taken in from 
         mag2 = np.linalg.norm(vector)
 
         similarity = (dot) / (query_mag * mag2)
-        chunk_ids[embedding['chunk_id']] = similarity
+        if similarity > 0.20:
+            chunk_ids[embedding['chunk_id']] = similarity
         
         
     sorted_scores = sorted(chunk_ids.items(), key=lambda score: score[1]) #sort by values(scores) in ascending
@@ -82,13 +106,24 @@ def k_similar_chunks(input_vector, embeddings, k): #embeddings is taken in from 
 
 
 
+def pdf_to_txt(pdf_file):
+    document = pymupdf.open(pdf_file)
+    with open('output.txt', 'w', encoding='utf-8') as output:
+        for page in document:
+            text = page.get_text()
+            output.write(text)
+            output.write("\n LINE BREAK \n")
+    return output
+
+    
+
 
 def chunk_text(file): #takes in document and returns list of chunks
     with open(file) as f:
         unchunked = f.read()
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=100,
-        chunk_overlap=20,
+        chunk_overlap=10,
         length_function=len,
         is_separator_regex=False,
     )
@@ -138,8 +173,11 @@ def quiz(prompt): #temporary functional quiz feature
 #flashcards("generate me five flashcards about math")
 #quiz("Generate a three question quiz on math")
 
-#chat()
-add_source('data/syllabus.txt')
-add_source('data/lecture_notes.txt')
-chat()
 
+#add_source('data/syllabus.txt')
+#add_source('data/lecture_notes.txt')
+
+#add_source('data/Langan.pdf')
+
+#db.clear_database()
+chat()
