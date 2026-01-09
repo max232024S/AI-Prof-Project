@@ -68,7 +68,7 @@ def add_source(source):
     pdf_text = pdf_to_txt(source)
     print(type(pdf_text))
     print(pdf_text)
-    chunks = chunk_text('data/output.txt')
+    chunks = chunk_text('output.txt')
 
     chunk_id_list = db.save_chunk(document_id, chunks) #save chunk ids to db
     embeddings = client.embed(chunks) #embed all chunks in source
@@ -119,7 +119,7 @@ def pdf_to_txt(pdf_file):
 
 
 def chunk_text(file): #takes in document and returns list of chunks
-    with open(file) as f:
+    with open(file, 'r', encoding='utf-8') as f:
         unchunked = f.read()
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=100,
@@ -180,4 +180,6 @@ def quiz(prompt): #temporary functional quiz feature
 #add_source('data/Langan.pdf')
 
 #db.clear_database()
+#add_source('data/Max Brooks Resume 2025 CS.pdf')
+add_source('data/Max Brooks Resume 2025 CS.pdf')
 chat()
