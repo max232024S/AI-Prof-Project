@@ -41,7 +41,9 @@ def chat():
         all_embeddings = db.load_embeddings(1) #load db embeddings for hardcoded user id
         similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 3)
         similar_chunks = db.load_similar_chunks(1, similar_chunk_ids)
-        similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([chunk['chunk_text'] for chunk in similar_chunks])
+        # IMPORTANT -> for document name citing also load in and format chunk['document_name'] and add to string
+        similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([f"Document: {chunk['document_name']} Chunk: {chunk['chunk_text']}" for chunk in similar_chunks])
+        #print(f"DEBUG: {similar_chunk_string}")
 
         prompt = context_prompt + similar_chunk_string
         
@@ -68,7 +70,7 @@ def add_source(source):
     
     chunks = chunk_text(raw_text)
 
-    chunk_id_list = db.save_chunk(document_id, chunks) #save chunk ids to db
+    chunk_id_list = db.save_chunk(document_id, chunks, source) #save chunk ids to db
     embeddings = client.embed(chunks) #embed all chunks in source
     for embedding,chunk_id in zip(embeddings, chunk_id_list):
         np_embedding = np.array(embedding).astype(np.float32)
@@ -118,7 +120,7 @@ def pdf_to_txt(pdf_file):
 
 def chunk_text(text_string): #takes in document and returns list of chunks
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
+        chunk_size=650,
         chunk_overlap=100,
         length_function=len,
         is_separator_regex=False,
@@ -177,6 +179,7 @@ def quiz(prompt): #temporary functional quiz feature
 
 #db.clear_database()
 #add_source('data/Max Brooks Resume 2025 CS.pdf')
-add_source('data/Lecture10_Lasso.pdf')
+#add_source('data/Lecture10_Lasso.pdf')
+add_source('data/STAT 4105 Homework 3 (1).pdf')
 chat()
 

@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS Document (
 CREATE TABLE IF NOT EXISTS Chunk (
     chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,
     document_id INTEGER NOT NULL,
+    document_name TEXT,
     chunk_index INTEGER NOT NULL,
     chunk_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

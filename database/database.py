@@ -4,15 +4,17 @@ class db:
     def __init__():
         return
     def construct_db():
+        conn = sqlite3.connect('ai_prof.db')
+        cursor = conn.cursor()
         try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            schema_path = os.path.join(current_dir, 'schema.sql')
-            conn = sqlite3.connect('ai_prof.db')
-            cursor = conn.cursor()
-            with open(schema_path, 'r') as f:
-                sql_script = f.read()
-            cursor.executescript(sql_script)
-            return conn
+            with conn:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                schema_path = os.path.join(current_dir, 'schema.sql')
+               
+                with open(schema_path, 'r') as f:
+                    sql_script = f.read()
+                cursor.executescript(sql_script)
+                return conn
         finally:
             conn.close()
     
@@ -109,16 +111,16 @@ class db:
 
 
 
-    def save_chunk(document_id, chunks_list):
+    def save_chunk(document_id, chunks_list, document_name):
         conn = sqlite3.connect('ai_prof.db')
         cursor = conn.cursor()
         try:
             with conn:
                 chunk_id_list = []
                 for index,chunk in enumerate(chunks_list):
-                    cursor.execute('''INSERT INTO Chunk (document_id, chunk_index, chunk_text)
-                                VALUES (?, ?, ?)''',
-                                (document_id, index, chunk))
+                    cursor.execute('''INSERT INTO Chunk (document_id, chunk_index, chunk_text, document_name)
+                                VALUES (?, ?, ?, ?)''',
+                                (document_id, index, chunk, document_name))
                     chunk_id_list.append(cursor.lastrowid)
                 return chunk_id_list                     
         finally:
@@ -162,7 +164,7 @@ class db:
                 
                 placeholders = ", ".join(['?'] * len(chunk_ids))
                 cursor.execute(f'''SELECT Chunk.chunk_id, Chunk.document_id, Chunk.chunk_index,
-                                Chunk.chunk_text FROM Chunk INNER JOIN Document
+                                Chunk.chunk_text, Chunk.document_name FROM Chunk INNER JOIN Document
                                 ON Chunk.document_id = Document.document_id
                                 INNER JOIN Course ON Document.course_id = Course.course_id
                                 WHERE (Course.user_id = ?)
@@ -179,6 +181,7 @@ class db:
         cursor = conn.cursor()
         # This deletes all current embeddings so you can start fresh
         cursor.execute("DELETE FROM Embedding")
+        cursor.execute("DELETE FROM Course")
         cursor.execute("DELETE FROM Chunk")
         cursor.execute("DELETE FROM Document")
         cursor.execute("DELETE FROM Message")
