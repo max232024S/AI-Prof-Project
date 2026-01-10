@@ -13,7 +13,6 @@ import pymupdf
 db.construct_db() #construct schema
 db.user_setup() #hardcoded for test
 db.course_setup() #hardcoded for test
-#cursor = connect.cursor() #activate cursor to modify SQL tables in main
 
 def chat():
     
@@ -65,10 +64,9 @@ def add_source(source):
         raise ValueError("Must be pdf file")
 
     document_id = db.create_document(1, source, 'syllabus')
-    pdf_text = pdf_to_txt(source)
-    print(type(pdf_text))
-    print(pdf_text)
-    chunks = chunk_text('output.txt')
+    raw_text = pdf_to_txt(source)
+    
+    chunks = chunk_text(raw_text)
 
     chunk_id_list = db.save_chunk(document_id, chunks) #save chunk ids to db
     embeddings = client.embed(chunks) #embed all chunks in source
@@ -94,8 +92,8 @@ def k_similar_chunks(input_vector, embeddings, k): #embeddings is taken in from 
         mag2 = np.linalg.norm(vector)
 
         similarity = (dot) / (query_mag * mag2)
-        if similarity > 0.20:
-            chunk_ids[embedding['chunk_id']] = similarity
+        
+        chunk_ids[embedding['chunk_id']] = similarity
         
         
     sorted_scores = sorted(chunk_ids.items(), key=lambda score: score[1]) #sort by values(scores) in ascending
@@ -108,26 +106,24 @@ def k_similar_chunks(input_vector, embeddings, k): #embeddings is taken in from 
 
 def pdf_to_txt(pdf_file):
     document = pymupdf.open(pdf_file)
-    with open('output.txt', 'w', encoding='utf-8') as output:
-        for page in document:
-            text = page.get_text()
-            output.write(text)
-            output.write("\n LINE BREAK \n")
-    return output
+    full_text = ""
+    for page in document:
+        raw_text = page.get_text()
+        clean_text = raw_text.replace("\u200b", "").replace("\n\n", "\n").strip()
+        full_text += clean_text + "\n "
+    return full_text
 
     
 
 
-def chunk_text(file): #takes in document and returns list of chunks
-    with open(file, 'r', encoding='utf-8') as f:
-        unchunked = f.read()
+def chunk_text(text_string): #takes in document and returns list of chunks
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=100,
-        chunk_overlap=10,
+        chunk_size=800,
+        chunk_overlap=100,
         length_function=len,
         is_separator_regex=False,
     )
-    chunks = text_splitter.split_text(unchunked)
+    chunks = text_splitter.split_text(text_string)
     chunks = list(chunks)
     return chunks
 
@@ -181,5 +177,6 @@ def quiz(prompt): #temporary functional quiz feature
 
 #db.clear_database()
 #add_source('data/Max Brooks Resume 2025 CS.pdf')
-add_source('data/Max Brooks Resume 2025 CS.pdf')
+add_source('data/Lecture10_Lasso.pdf')
 chat()
+
