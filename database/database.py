@@ -189,4 +189,136 @@ class db:
         conn.commit()
         conn.close()
         print("Database purged. Ready for fresh data.")
-        
+
+    # Authentication methods
+    def create_user(first_name, last_name, email, password):
+        """Create a new user account with password."""
+        conn = sqlite3.connect('ai_prof.db')
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''INSERT INTO User (first_name, last_name, email, password)
+                               VALUES (?, ?, ?, ?)''',
+                               (first_name, last_name, email, password))
+                return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def get_user_by_email(email):
+        """Lookup user by email address."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT user_id, first_name, last_name, email, password
+                               FROM User WHERE email = ?''', (email,))
+                user = cursor.fetchone()
+                return dict(user) if user else None
+        finally:
+            conn.close()
+
+    def verify_password(email, password):
+        """Verify user password for login."""
+        user = db.get_user_by_email(email)
+        if not user or user['password'] is None:
+            return False
+        return user['password'] == password
+
+    def create_token(user_id, token):
+        """Generate and store new API token for user."""
+        conn = sqlite3.connect('ai_prof.db')
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''INSERT INTO Token (user_id, token)
+                               VALUES (?, ?)''',
+                               (user_id, token))
+                return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def get_user_by_token(token):
+        """Validate token and return user information."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT User.user_id, User.first_name, User.last_name, User.email
+                               FROM User
+                               INNER JOIN Token ON User.user_id = Token.user_id
+                               WHERE Token.token = ?''', (token,))
+                user = cursor.fetchone()
+                return dict(user) if user else None
+        finally:
+            conn.close()
+
+    def get_conversations(user_id):
+        """List all conversations for a user with message counts."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT
+                                   Conversation.conversation_id,
+                                   Conversation.conversation_time as created_at,
+                                   COUNT(Message.message_id) as message_count
+                               FROM Conversation
+                               LEFT JOIN Message ON Conversation.conversation_id = Message.conversation_id
+                               WHERE Conversation.user_id = ?
+                               GROUP BY Conversation.conversation_id
+                               ORDER BY Conversation.conversation_time DESC''',
+                               (user_id,))
+                conversations = cursor.fetchall()
+                return [dict(conv) for conv in conversations]
+        finally:
+            conn.close()
+
+    def get_conversation_messages(conversation_id):
+        """Get all messages in a conversation."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT
+                                   message_id,
+                                   message_role as role,
+                                   message_text as content,
+                                   conversation_id
+                               FROM Message
+                               WHERE conversation_id = ?
+                               ORDER BY message_id ASC''',
+                               (conversation_id,))
+                messages = cursor.fetchall()
+                return [dict(msg) for msg in messages]
+        finally:
+            conn.close()
+
+    def get_user_documents(user_id):
+        """List all uploaded documents for a user with chunk counts."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT
+                                   Document.document_id,
+                                   Document.name,
+                                   Document.source_type,
+                                   Document.created_at as uploaded_at,
+                                   COUNT(Chunk.chunk_id) as chunk_count
+                               FROM Document
+                               INNER JOIN Course ON Document.course_id = Course.course_id
+                               LEFT JOIN Chunk ON Document.document_id = Chunk.document_id
+                               WHERE Course.user_id = ?
+                               GROUP BY Document.document_id
+                               ORDER BY Document.created_at DESC''',
+                               (user_id,))
+                documents = cursor.fetchall()
+                return [dict(doc) for doc in documents]
+        finally:
+            conn.close()
+

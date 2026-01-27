@@ -14,9 +14,65 @@ db.construct_db() #construct schema
 db.user_setup() #hardcoded for test
 db.course_setup() #hardcoded for test
 
-def chat():
-    
+def chat_api(user_id, message, conversation_id=None):
+    """
+    API-friendly chat function that returns a dictionary instead of printing.
 
+    Args:
+        user_id: ID of the user
+        message: User's chat message
+        conversation_id: Optional existing conversation ID
+
+    Returns:
+        dict with 'response', 'conversation_id', and 'sources' keys
+    """
+    # Start new conversation if not provided
+    if conversation_id is None:
+        conversation_id = db.start_conversation(user_id)
+
+    # Save user message
+    db.save_message(conversation_id, "user", message)
+
+    # Load conversation context
+    context = db.load_memory(user_id)
+    context_prompt = ""
+    for msg in context:
+        role = msg['message_role']
+        content = msg['message_text']
+        context_prompt += role + ": " + content + " \n -- SOURCE MESSAGE -- \n "
+
+    # Embed user input and find similar chunks
+    input_embedding_list = client.embed(message)
+    input_embedding = input_embedding_list[0]
+    all_embeddings = db.load_embeddings(user_id)
+    similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 3)
+    similar_chunks = db.load_similar_chunks(user_id, similar_chunk_ids)
+
+    # Format similar chunks with document names
+    similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([
+        f"Document: {chunk['document_name']} Chunk: {chunk['chunk_text']}"
+        for chunk in similar_chunks
+    ])
+
+    # Build prompt and get response
+    prompt = context_prompt + similar_chunk_string
+    response = client.run("chat", prompt)
+
+    # Save system response
+    db.save_message(conversation_id, "system", response)
+
+    # Extract source document names
+    sources = list(set([chunk['document_name'] for chunk in similar_chunks]))
+
+    return {
+        'response': response,
+        'conversation_id': conversation_id,
+        'sources': sources
+    }
+
+
+def chat():
+    """CLI chat function (original behavior preserved)."""
     conversation_id = db.start_conversation(1)
     while True:
         user_input = input("Chat here: \n ")
@@ -24,59 +80,71 @@ def chat():
             print("Have a nice day. \n")
             break
 
-        db.save_message(conversation_id, "user", user_input)
-        context = db.load_memory(1) #hard coded user id
-        
-        context_prompt = ""
-        for message in context:
-            role = message['message_role']
-            content = message['message_text']
-            context_prompt += role + ": " + content + " \n -- SOURCE MESSAGE -- \n "
-
-            
-
-
-        input_embedding_list = client.embed(user_input) #embed user input
-        input_embedding = input_embedding_list[0]
-        all_embeddings = db.load_embeddings(1) #load db embeddings for hardcoded user id
-        similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 3)
-        similar_chunks = db.load_similar_chunks(1, similar_chunk_ids)
-        # IMPORTANT -> for document name citing also load in and format chunk['document_name'] and add to string
-        similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([f"Document: {chunk['document_name']} Chunk: {chunk['chunk_text']}" for chunk in similar_chunks])
-        #print(f"DEBUG: {similar_chunk_string}")
-
-        prompt = context_prompt + similar_chunk_string
-        
-
-        response = client.run("chat", prompt)
-        db.save_message(conversation_id, "system", response)
-        print(response)
+        result = chat_api(1, user_input, conversation_id)
+        conversation_id = result['conversation_id']
+        print(result['response'])
 
 
 
-def add_source(source):
-    print(type(source))
-    if source is None:
+def add_source_api(user_id, file_path, source_type='syllabus'):
+    """
+    API-friendly function to add a PDF source document.
+
+    Args:
+        user_id: ID of the user (used to get course_id)
+        file_path: Path to the PDF file
+        source_type: Type of document (default: 'syllabus')
+
+    Returns:
+        dict with 'success', 'message', 'document_id', and 'filename' keys
+
+    Raises:
+        ValueError: If file is not a PDF or doesn't exist
+        TypeError: If file_path is not a string
+    """
+    if file_path is None:
         raise ValueError("Must enter source file")
-    
-    if not isinstance(source, str):
-        raise TypeError("File not in string format") #checks if source file is a string
-    
-    if not source.strip(' ').endswith('.pdf'): #checks if file is pdf
+
+    if not isinstance(file_path, str):
+        raise TypeError("File not in string format")
+
+    if not file_path.strip(' ').endswith('.pdf'):
         raise ValueError("Must be pdf file")
 
-    document_id = db.create_document(1, source, 'syllabus')
-    raw_text = pdf_to_txt(source)
-    
+    # Create document (hardcoded course_id=1 for MVP)
+    document_id = db.create_document(1, file_path, source_type)
+
+    # Extract text from PDF
+    raw_text = pdf_to_txt(file_path)
+
+    # Chunk the text
     chunks = chunk_text(raw_text)
 
-    chunk_id_list = db.save_chunk(document_id, chunks, source) #save chunk ids to db
-    embeddings = client.embed(chunks) #embed all chunks in source
-    for embedding,chunk_id in zip(embeddings, chunk_id_list):
+    # Save chunks and embeddings
+    chunk_id_list = db.save_chunk(document_id, chunks, file_path)
+    embeddings = client.embed(chunks)
+
+    for embedding, chunk_id in zip(embeddings, chunk_id_list):
         np_embedding = np.array(embedding).astype(np.float32)
         vector_blob = np_embedding.tobytes()
         db.save_embedding(chunk_id, vector_blob)
-    print("Source successfully added!")
+
+    # Extract just the filename
+    filename = os.path.basename(file_path)
+
+    return {
+        'success': True,
+        'message': 'File uploaded successfully',
+        'document_id': document_id,
+        'filename': filename
+    }
+
+
+def add_source(source):
+    """CLI function to add source (original behavior preserved)."""
+    print(type(source))
+    result = add_source_api(1, source, 'syllabus')
+    print(result['message'])
 
 
 
@@ -107,12 +175,26 @@ def k_similar_chunks(input_vector, embeddings, k): #embeddings is taken in from 
 
 
 def pdf_to_txt(pdf_file):
+    #first handle OCR text extraction
+    #determine if page is filled with an image
+    #convert to OCR  TextPage object
+    #extract plaintext
+
+    #we also need to handle table text extraction
+
+
     document = pymupdf.open(pdf_file)
     full_text = ""
     for page in document:
         raw_text = page.get_text()
         clean_text = raw_text.replace("\u200b", "").replace("\n\n", "\n").strip()
-        full_text += clean_text + "\n "
+
+        if (len(clean_text.strip()) < 10) and len(page.get_images()) > 0: #barely any raw text on given page
+            #OCR condition
+            full_text += page.get_text("text", ocr=True) + "\n "
+        else:
+            full_text += clean_text + "\n "
+
     return full_text
 
     
@@ -137,9 +219,33 @@ def chunk_text(text_string): #takes in document and returns list of chunks
 
 
 
-def quiz(prompt): #temporary functional quiz feature
+def quiz_api(user_id, prompt, num_questions=5):
+    """
+    API-friendly quiz generation function.
+
+    Args:
+        user_id: ID of the user (for future use)
+        prompt: Quiz generation prompt
+        num_questions: Number of questions to generate (default: 5)
+
+    Returns:
+        dict with 'questions' key containing list of question dicts
+    """
+    # Generate quiz using LLM
     raw = client.run("quiz", prompt)
     data = json.loads(raw)
+
+    # Return structured quiz data
+    return {
+        'questions': data['questions']
+    }
+
+
+def quiz(prompt):
+    """CLI quiz function (original behavior preserved)."""
+    result = quiz_api(1, prompt)
+    data = result
+
     count = 0
     numCorrect = 0
     for question in data["questions"]:
@@ -180,6 +286,8 @@ def quiz(prompt): #temporary functional quiz feature
 #db.clear_database()
 #add_source('data/Max Brooks Resume 2025 CS.pdf')
 #add_source('data/Lecture10_Lasso.pdf')
-add_source('data/STAT 4105 Homework 3 (1).pdf')
-chat()
+#add_source('data/STAT 4105 Homework 3 (1).pdf')
+#add_source('data/Max Brooks Resume 2026 Polished.docx.pdf')
 
+if __name__ == "__main__":
+    chat()

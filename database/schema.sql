@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS User (
     first_name TEXT NOT NULL,
     last_name TEXT,
     email TEXT UNIQUE NOT NULL,
+    password TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -65,4 +66,12 @@ CREATE TABLE IF NOT EXISTS Embedding (
     vector BLOB NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chunk_id) REFERENCES Chunk (chunk_id)
+);
+
+CREATE TABLE IF NOT EXISTS Token (
+    token_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES User(user_id)
 );
