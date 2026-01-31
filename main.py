@@ -186,6 +186,13 @@ def pdf_to_txt(pdf_file):
     document = pymupdf.open(pdf_file)
     full_text = ""
     for page in document:
+        
+        tabs = page.find_tables() #locate any tables and extrac them
+        if tabs.tables:
+            for table in tabs.tables:
+                full_text += table.to_markdown() + "\n\n"
+        
+        
         raw_text = page.get_text()
         clean_text = raw_text.replace("\u200b", "").replace("\n\n", "\n").strip()
 
@@ -290,4 +297,5 @@ def quiz(prompt):
 #add_source('data/Max Brooks Resume 2026 Polished.docx.pdf')
 
 if __name__ == "__main__":
+    add_source('data/sampletablepdf.pdf')
     chat()
