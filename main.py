@@ -271,8 +271,8 @@ def quiz(prompt):
         count += 1
         length = len(data["questions"])
         if (count == length):
-            percent = numCorrect // count
-            print("Score: " + percent + "%\n")
+            percent = (numCorrect / count) * 100
+            print(f"Score: {percent:.1f}%\n")
 
 
 
@@ -297,5 +297,5 @@ def quiz(prompt):
 #add_source('data/Max Brooks Resume 2026 Polished.docx.pdf')
 
 if __name__ == "__main__":
-    add_source('data/sampletablepdf.pdf')
+    #add_source('data/sampletablepdf.pdf')
     chat()

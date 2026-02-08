@@ -54,8 +54,17 @@ def embed(chunks): #returns list of arrays of embeddings - note these need to be
     }
 
     response = requests.post(url, json=payload, headers=headers)
-    #embeddings = [np.array(obj) in response['embedding'] for obj in response.json()['data']]
-    embeddings = [np.array(item['embedding']) for item in response.json()['data']]
+
+    # Add error handling
+    response.raise_for_status()  # Raise an exception for bad status codes
+
+    # Debug: print the response to see what we're getting
+    response_data = response.json()
+
+    if 'data' not in response_data:
+        raise ValueError(f"Unexpected response format. Response: {response_data}")
+
+    embeddings = [np.array(item['embedding']) for item in response_data['data']]
     return embeddings
     
     
