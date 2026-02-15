@@ -1,0 +1,28 @@
+COURSE: AI-101 Introduction to Artificial Intelligence
+SEMESTER: Spring 2026
+INSTRUCTOR: Professor Gemini
+
+--- OFFICE HOURS ---
+Professor Gemini is available for office hours every Tuesday and Thursday from 2:00 PM to 3:30 PM. 
+Meetings are held in Room 402 of the Computer Science Building. 
+Students may also join virtually via the link provided on the course homepage.
+
+--- GRADING POLICY ---
+The final grade is calculated based on the following weight distribution:
+- Weekly Quizzes: 20%
+- Midterm Project: 30%
+- Final Examination: 40%
+- Class Participation: 10%
+
+--- LATE WORK POLICY ---
+Assignments submitted after the deadline will incur a penalty of 10% per day. 
+Work submitted more than 5 days late will not be accepted and will receive a grade of zero. 
+Exceptions are only made for documented medical emergencies or prior arrangements made at least 48 hours before the deadline.
+
+--- TEXTBOOK AND MATERIALS ---
+The primary textbook for this course is "Neural Networks: A Modern Approach" by Dr. Sarah Chen. 
+Students are also required to have a subscription to the AI Research Lab platform for weekly coding assignments.
+
+--- ATTENDANCE ---
+Attendance is mandatory. Students are allowed two unexcused absences per semester. 
+Each subsequent unexcused absence will result in a 2% deduction from the final participation grade.
