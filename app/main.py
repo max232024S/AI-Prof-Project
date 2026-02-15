@@ -10,9 +10,10 @@ import pymupdf
 
 
 
-db.construct_db() #construct schema
-db.user_setup() #hardcoded for test
-db.course_setup() #hardcoded for test
+# Database initialization moved to app.py startup
+# db.construct_db() #construct schema
+# db.user_setup() #hardcoded for test
+# db.course_setup() #hardcoded for test
 
 def chat_api(user_id, message, conversation_id=None):
     """
@@ -67,7 +68,9 @@ def chat_api(user_id, message, conversation_id=None):
     return {
         'response': response,
         'conversation_id': conversation_id,
-        'sources': sources
+        'sources': sources,
+        'similar_chunks' : similar_chunk_string,
+        'context' : context_prompt
     }
 
 

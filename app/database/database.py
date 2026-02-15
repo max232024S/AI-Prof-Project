@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from fastapi import HTTPException
 class db:
     def __init__():
         return
@@ -191,68 +192,26 @@ class db:
         print("Database purged. Ready for fresh data.")
 
     # Authentication methods
-    def create_user(first_name, last_name, email, password):
+    def create_user(first_name, last_name, email):
         """Create a new user account with password."""
         conn = sqlite3.connect('ai_prof.db')
         cursor = conn.cursor()
         try:
             with conn:
-                cursor.execute('''INSERT INTO User (first_name, last_name, email, password)
-                               VALUES (?, ?, ?, ?)''',
-                               (first_name, last_name, email, password))
+                cursor.execute('''INSERT INTO User (first_name, last_name, email)
+                               VALUES (?, ?, ?)''',
+                               (first_name, last_name, email))
                 return cursor.lastrowid
         finally:
             conn.close()
 
-    def get_user_by_email(email):
-        """Lookup user by email address."""
-        conn = sqlite3.connect('ai_prof.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        try:
-            with conn:
-                cursor.execute('''SELECT user_id, first_name, last_name, email, password
-                               FROM User WHERE email = ?''', (email,))
-                user = cursor.fetchone()
-                return dict(user) if user else None
-        finally:
-            conn.close()
+    
 
-    def verify_password(email, password):
-        """Verify user password for login."""
-        user = db.get_user_by_email(email)
-        if not user or user['password'] is None:
-            return False
-        return user['password'] == password
+    
 
-    def create_token(user_id, token):
-        """Generate and store new API token for user."""
-        conn = sqlite3.connect('ai_prof.db')
-        cursor = conn.cursor()
-        try:
-            with conn:
-                cursor.execute('''INSERT INTO Token (user_id, token)
-                               VALUES (?, ?)''',
-                               (user_id, token))
-                return cursor.lastrowid
-        finally:
-            conn.close()
+    
 
-    def get_user_by_token(token):
-        """Validate token and return user information."""
-        conn = sqlite3.connect('ai_prof.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        try:
-            with conn:
-                cursor.execute('''SELECT User.user_id, User.first_name, User.last_name, User.email
-                               FROM User
-                               INNER JOIN Token ON User.user_id = Token.user_id
-                               WHERE Token.token = ?''', (token,))
-                user = cursor.fetchone()
-                return dict(user) if user else None
-        finally:
-            conn.close()
+    
 
     def get_conversations(user_id):
         """List all conversations for a user with message counts."""
@@ -321,4 +280,86 @@ class db:
                 return [dict(doc) for doc in documents]
         finally:
             conn.close()
+    def get_user_by_email(email):
+        conn = sqlite3.connect("ai_prof.db")
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''SELECT
+                           User.user_id,
+                           User.first_name,
+                           User.last_name,
+                           User.email
+                           FROM User
+                           WHERE User.email = (?)''',
+                           (email,))
+            user = cursor.fetchone()
+            return dict(user) if user else None
+        finally:
+            conn.close()
 
+    def getHashedPassword(email):
+        conn = sqlite3.connect('ai_prof.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''SELECT
+                           hashed_password
+                           FROM User
+                           WHERE
+                           email = ?''',
+                           (email,))
+            result = cursor.fetchone()
+            return result[0] if result else None
+        finally:
+            conn.close()
+
+    def storeHashedPassword(email, hashedPassword):
+        conn = sqlite3.connect('ai_prof.db')
+
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                           UPDATE User
+                           SET hashed_password = ?
+                           WHERE email = ?''',
+                           (hashedPassword, email))
+            if cursor.rowcount > 0:
+                conn.commit()
+                return {
+                    "message" : "Password updated for existing user record"
+                }
+            else:
+                # User doesn't exist, raise error
+                raise HTTPException(status_code=400, detail="User not found")
+        finally:
+            conn.close()
+    
+    def get_course_from_user_id(user_id):
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT course_id, name, start_date, end_date, course_code
+                               FROM Course
+                               WHERE user_id = ?''',
+                               (user_id,))
+                course = cursor.fetchone()
+                if not course:
+                    return None
+                return dict(course)
+        finally:
+            conn.close()
+
+    def create_course(user_id, name, start_date, end_date, course_code=None):
+        """Create a new course for a user."""
+        conn = sqlite3.connect('ai_prof.db')
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''INSERT INTO Course (user_id, name, start_date, end_date, course_code)
+                               VALUES (?, ?, ?, ?, ?)''',
+                               (user_id, name, start_date, end_date, course_code))
+                return cursor.lastrowid  # Return new course_id
+        finally:
+            conn.close()
