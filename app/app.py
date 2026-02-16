@@ -15,8 +15,8 @@ security = HTTPBearer()
 
 # Initialize database on startup
 db.construct_db() #construct schema
-db.user_setup() #hardcoded for test
-db.course_setup() #hardcoded for test
+#db.user_setup() #hardcoded for test
+#db.course_setup() #hardcoded for test
 
 
 user_ids = list()
