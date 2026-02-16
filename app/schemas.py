@@ -4,6 +4,7 @@ from datetime import date
 class AddSourcePost(BaseModel):
     file_path : str
     source_type : str
+    course_id : int
 
 class ChatPost(BaseModel):
     message : str

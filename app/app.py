@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uvicorn
 import main as m
 from schemas import AddSourcePost, ChatPost, RegisterPost, LoginPost, CoursePost
@@ -10,6 +11,7 @@ import os
 SECRET_KEY = os.getenv("ENCODING_KEY")
 
 app = FastAPI()
+security = HTTPBearer()
 
 # Initialize database on startup
 db.construct_db() #construct schema
@@ -64,7 +66,10 @@ def login(p : LoginPost):
         },
         SECRET_KEY,
         algorithm="HS256") #encoding algorithm
-        return token #this will be sent to client
+        return {
+            "access_token" : token,
+            "token_type" : "bearer"
+        } #this will be sent to client
     except HTTPException:
         raise
     except Exception as e:
@@ -73,14 +78,11 @@ def login(p : LoginPost):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}") 
 
-def get_current_user_id(authorization: str = Header(None)) -> int:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="No token found")
-    
-    token = authorization.replace("Bearer ", "") #extract token from authorization block
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+    token = credentials.credentials
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]) #decode token to find user_id
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         return payload["user_id"]
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -90,7 +92,16 @@ def get_current_user_id(authorization: str = Header(None)) -> int:
 @app.post("/add-source")
 def add_source(p: AddSourcePost, user_id : int = Depends(get_current_user_id)): #use depends to inject current user_id into endpoint
     try:
-        return m.add_source_api(user_id, p.file_path, p.source_type)
+        # Verify the course belongs to the authenticated user
+        course = db.get_course_by_id(p.course_id)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        if course['user_id'] != user_id:
+            raise HTTPException(status_code=403, detail="You don't have permission to add sources to this course")
+
+        return m.add_source_api(p.course_id, p.file_path, p.source_type)
+    except HTTPException:
+        raise
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid value type")
     except FileNotFoundError:
@@ -122,4 +133,4 @@ def add_course(p : CoursePost, user_id : int = Depends(get_current_user_id)):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=9000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True)

@@ -363,3 +363,18 @@ class db:
                 return cursor.lastrowid  # Return new course_id
         finally:
             conn.close()
+
+    def get_course_by_id(course_id):
+        """Get a course by its ID."""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''SELECT course_id, user_id, name, start_date, end_date, course_code
+                           FROM Course
+                           WHERE course_id = ?''',
+                           (course_id,))
+            course = cursor.fetchone()
+            return dict(course) if course else None
+        finally:
+            conn.close()

@@ -31,16 +31,20 @@ def chat_api(user_id, message, conversation_id=None):
     if conversation_id is None:
         conversation_id = db.start_conversation(user_id)
 
-    # Save user message
+    # Load conversation context BEFORE saving current message
+    context = db.load_memory(user_id)
+
+    # Save user message AFTER loading context
     db.save_message(conversation_id, "user", message)
 
-    # Load conversation context
-    context = db.load_memory(user_id)
-    context_prompt = ""
-    for msg in context:
-        role = msg['message_role']
-        content = msg['message_text']
-        context_prompt += role + ": " + content + " \n -- SOURCE MESSAGE -- \n "
+    # Format previous conversation history
+    if context:
+        context_prompt = "PREVIOUS CONVERSATION:\n"
+        for msg in context:
+            role = "User" if msg['message_role'] == 'user' else "Assistant"
+            context_prompt += f"{role}: {msg['message_text']}\n\n"
+    else:
+        context_prompt = ""
 
     # Embed user input and find similar chunks
     input_embedding_list = client.embed(message)
@@ -50,13 +54,15 @@ def chat_api(user_id, message, conversation_id=None):
     similar_chunks = db.load_similar_chunks(user_id, similar_chunk_ids)
 
     # Format similar chunks with document names
-    similar_chunk_string = "\n\n--- SOURCE CHUNK ---\n ".join([
-        f"Document: {chunk['document_name']} Chunk: {chunk['chunk_text']}"
-        for chunk in similar_chunks
-    ])
+    if similar_chunks:
+        similar_chunk_string = "\n\nRELEVANT COURSE MATERIAL:\n"
+        for chunk in similar_chunks:
+            similar_chunk_string += f"[From {chunk['document_name']}]\n{chunk['chunk_text']}\n\n"
+    else:
+        similar_chunk_string = ""
 
-    # Build prompt and get response
-    prompt = context_prompt + similar_chunk_string
+    # Build prompt: context + chunks + current question
+    prompt = f"{context_prompt}{similar_chunk_string}CURRENT QUESTION:\n{message}"
     response = client.run("chat", prompt)
 
     # Save system response
@@ -89,7 +95,7 @@ def chat():
 
 
 
-def add_source_api(user_id, file_path, source_type='syllabus'):
+def add_source_api(course_id, file_path, source_type='syllabus'):
     """
     API-friendly function to add a PDF source document.
 
@@ -115,7 +121,7 @@ def add_source_api(user_id, file_path, source_type='syllabus'):
         raise ValueError("Must be pdf file")
 
     # Create document (hardcoded course_id=1 for MVP)
-    document_id = db.create_document(1, file_path, source_type)
+    document_id = db.create_document(course_id, file_path, source_type)
 
     # Extract text from PDF
     raw_text = pdf_to_txt(file_path)
@@ -297,8 +303,7 @@ def quiz(prompt):
 #add_source('data/Max Brooks Resume 2025 CS.pdf')
 #add_source('data/Lecture10_Lasso.pdf')
 #add_source('data/STAT 4105 Homework 3 (1).pdf')
-#add_source('data/Max Brooks Resume 2026 Polished.docx.pdf')
 
 if __name__ == "__main__":
-    add_source('data/sampletablepdf.pdf')
+    add_source('data/Langan.pdf')
     chat()
