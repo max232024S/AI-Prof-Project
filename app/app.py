@@ -19,7 +19,17 @@ db.construct_db() #construct schema
 #db.course_setup() #hardcoded for test
 
 
-user_ids = list()
+user_ids = []
+documents = []
+
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return payload["user_id"]
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.post("/register")
 def register(p : RegisterPost):
@@ -78,14 +88,9 @@ def login(p : LoginPost):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}") 
 
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    token = credentials.credentials
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload["user_id"]
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+
+
 
 
 
@@ -126,9 +131,71 @@ def add_course(p : CoursePost, user_id : int = Depends(get_current_user_id)):
             "course" : course_id
         }
 
+def get_courses_from_current_user(user_id : int=Depends(get_current_user_id)):
+    try:
+        courses = db.get_course_from_user_id(user_id)
+        return courses
+    except Exception as e:
+        print(f"Exception details: {str(e)}")
+        raise HTTPException(status_code=404, detail="Course not found")
 
 
+#lets also make get requests for documents and courses
+@app.get("/get-documents")
+def get_documents(course_id : int, user_id : int=Depends(get_current_user_id)):
+    courses = get_courses_from_current_user(user_id)
+    if not courses:
+        raise HTTPException(status_code=404, detail="Course not found.")
+    #find the desired course
+    selectedCourse = None
+    for course in courses:
+        if course['course_id'] == course_id:
+            selectedCourse = course
+            break
+    if not selectedCourse:
+        raise HTTPException(status_code=404, detail="Course not found.")
+    if selectedCourse['user_id'] != user_id:
+            raise HTTPException(status_code=403, detail="You don't have permission to view this course's documents.")
+    documents = db.get_course_documents(selectedCourse['course_id'])
+    return documents
 
+#also add get courses endpoint
+@app.get('/get-courses')
+def get_courses(user_id : int=Depends(get_current_user_id)):
+    courses = db.get_course_from_user_id(user_id)
+    if not courses:
+        raise HTTPException(status_code=404, detail="No courses found.")
+    return courses
+
+
+#get conversations routing
+@app.get('/get-conversations')
+def get_conversations(user_id : int=Depends(get_current_user_id)):
+    conversations = db.get_conversations(user_id) #list of dictionaries
+    if not conversations:
+        raise HTTPException(status_code=404, detail="No conversations found")
+    return conversations
+
+#get messages in conversations routing
+@app.get('/get-messages-in-conversation')
+def get_messages_in_conversation(conversation_id : int, user_id : int=Depends(get_current_user_id)):
+    conversations = db.get_conversations(user_id)
+    selectedConversation = None
+    for conversation in conversations:
+        if conversation['conversation_id'] == conversation_id:
+            selectedConversation = conversation
+            break
+    if not selectedConversation:
+        raise HTTPException(status_code=404, detail="Conversation does not exist.")
+    if selectedConversation['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail="You don't have access to this conversation.")
+    
+    #we have now found selected conversation, next extract the messages
+    messages = db.get_conversation_messages(selectedConversation['conversation_id'])
+    if not messages:
+        raise HTTPException(status_code=404, detail="No messages found in conversation.")
+    return messages
+    
 
 
 

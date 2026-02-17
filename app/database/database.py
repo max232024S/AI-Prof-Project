@@ -50,6 +50,7 @@ class db:
     
     def start_conversation(user_id):
         conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         try:
             with conn:
@@ -57,11 +58,9 @@ class db:
                             VALUES (?)
                             ''',
                             (user_id, ))
-                cursor.execute('''SELECT conversation_id FROM Conversation
-                               WHERE (user_id = ?)''',
-                               (user_id, ))
-                conversation_id_tuple = cursor.fetchone()
-                return conversation_id_tuple[0]
+               
+                return cursor.lastrowid
+                
         finally:
             conn.close()
     
@@ -222,6 +221,7 @@ class db:
             with conn:
                 cursor.execute('''SELECT
                                    Conversation.conversation_id,
+                                   Conversation.user_id, 
                                    Conversation.conversation_time as created_at,
                                    COUNT(Message.message_id) as message_count
                                FROM Conversation
@@ -340,14 +340,14 @@ class db:
         cursor = conn.cursor()
         try:
             with conn:
-                cursor.execute('''SELECT course_id, name, start_date, end_date, course_code
+                cursor.execute('''SELECT course_id, user_id, name, start_date, end_date, course_code
                                FROM Course
                                WHERE user_id = ?''',
                                (user_id,))
-                course = cursor.fetchone()
-                if not course:
+                courses = cursor.fetchall()
+                if not courses:
                     return None
-                return dict(course)
+                return [dict(course) for course in courses]
         finally:
             conn.close()
 
@@ -370,11 +370,46 @@ class db:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         try:
-            cursor.execute('''SELECT course_id, user_id, name, start_date, end_date, course_code
-                           FROM Course
-                           WHERE course_id = ?''',
-                           (course_id,))
-            course = cursor.fetchone()
-            return dict(course) if course else None
+            with conn:
+
+                cursor.execute('''SELECT course_id, user_id, name, start_date, end_date, course_code
+                            FROM Course
+                            WHERE course_id = ?''',
+                            (course_id,))
+                course = cursor.fetchone()
+                return dict(course) if course else None
+        finally:
+            conn.close()
+
+    def get_course_documents(course_id):
+        """Gets all documents for given course"""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+       
+        try:
+            with conn:
+                cursor.execute('''SELECT document_id, course_id, name 
+                            FROM Document d
+                            WHERE d.course_id = ?''',
+                            (course_id,))
+                documents = cursor.fetchall()
+                return [dict(doc) for doc in documents]
+        finally:
+            conn.close()
+
+    def get_conversation_by_id(conversation_id):
+        """Gets conversation based off conversation id"""
+        conn = sqlite3.connect('ai_prof.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        try:
+            with conn:
+                cursor.execute('''SELECT user_id, conversation_id, conversation_time
+                               FROM Conversation c
+                               WHERE c.conversation_id = ?''',
+                               (conversation_id,))
+                conversation = cursor.fetchone()
+                return dict(conversation) if conversation else None
         finally:
             conn.close()

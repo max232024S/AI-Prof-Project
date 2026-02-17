@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from fastapi import Depends
 from datetime import date
+from typing import Optional
 class AddSourcePost(BaseModel):
     file_path : str
     source_type : str
@@ -8,7 +9,7 @@ class AddSourcePost(BaseModel):
 
 class ChatPost(BaseModel):
     message : str
-    conversation_id : int = None
+    conversation_id : Optional[int] = None
 
 class RegisterPost(BaseModel):
     first_name : str
@@ -22,6 +23,6 @@ class LoginPost(BaseModel):
 
 class CoursePost(BaseModel):
     name : str
-    start_date : date
-    end_date : date
+    start_date : Optional[date]
+    end_date : Optional[date]
     course_code : str

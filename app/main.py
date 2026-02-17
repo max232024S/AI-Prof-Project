@@ -28,9 +28,13 @@ def chat_api(user_id, message, conversation_id=None):
         dict with 'response', 'conversation_id', and 'sources' keys
     """
     # Start new conversation if not provided
-    if conversation_id is None:
+    if conversation_id is not None:
+        conversation = db.get_conversation_by_id(conversation_id)
+        if not conversation or conversation['user_id'] != user_id:
+            raise ValueError("Conversation not found or access denied.")
+    else:
         conversation_id = db.start_conversation(user_id)
-
+    
     # Load conversation context BEFORE saving current message
     context = db.load_memory(user_id)
 
@@ -120,7 +124,6 @@ def add_source_api(course_id, file_path, source_type='syllabus'):
     if not file_path.strip(' ').endswith('.pdf'):
         raise ValueError("Must be pdf file")
 
-    # Create document (hardcoded course_id=1 for MVP)
     document_id = db.create_document(course_id, file_path, source_type)
 
     # Extract text from PDF
