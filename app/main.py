@@ -11,32 +11,26 @@ import pymupdf
 
 
 # Database initialization moved to app.py startup
-# db.construct_db() #construct schema
-# db.user_setup() #hardcoded for test
-# db.course_setup() #hardcoded for test
+db.construct_db() #construct schema
 
-def chat_api(user_id, message, conversation_id=None):
+def chat_api(user_id, message, conversation_id):
     """
     API-friendly chat function that returns a dictionary instead of printing.
 
     Args:
         user_id: ID of the user
         message: User's chat message
-        conversation_id: Optional existing conversation ID
+        conversation_id: Existing conversation ID
 
     Returns:
         dict with 'response', 'conversation_id', and 'sources' keys
     """
-    # Start new conversation if not provided
-    if conversation_id is not None:
-        conversation = db.get_conversation_by_id(conversation_id)
-        if not conversation or conversation['user_id'] != user_id:
-            raise ValueError("Conversation not found or access denied.")
-    else:
-        conversation_id = db.start_conversation(user_id)
+    conversation = db.get_conversation_by_id(conversation_id)
+    if not conversation or conversation['user_id'] != user_id:
+        raise ValueError("Conversation not found or access denied.")
     
     # Load conversation context BEFORE saving current message
-    context = db.load_memory(user_id)
+    context = db.load_memory(user_id, conversation_id)
 
     # Save user message AFTER loading context
     db.save_message(conversation_id, "user", message)
@@ -54,7 +48,7 @@ def chat_api(user_id, message, conversation_id=None):
     input_embedding_list = client.embed(message)
     input_embedding = input_embedding_list[0]
     all_embeddings = db.load_embeddings(user_id)
-    similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 3)
+    similar_chunk_ids = k_similar_chunks(input_embedding, all_embeddings, 5)
     similar_chunks = db.load_similar_chunks(user_id, similar_chunk_ids)
 
     # Format similar chunks with document names
@@ -308,5 +302,6 @@ def quiz(prompt):
 #add_source('data/STAT 4105 Homework 3 (1).pdf')
 
 if __name__ == "__main__":
-    add_source('data/Langan.pdf')
+    #db.clear_database()
+    #add_source('data/cipher.pdf')
     chat()

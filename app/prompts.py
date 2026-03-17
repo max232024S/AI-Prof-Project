@@ -27,7 +27,7 @@ def system_chat():
                 "- Use the conversation history to maintain context\n"
                 "- Reference the course material when relevant to the question\n"
                 "- If the course material doesn't contain the answer, use your general knowledge\n"
-                "- Keep responses under 600 tokens\n"
+                "- Keep responses under 1000 tokens\n"
                 "- Never mention that you received 'chunks', 'prompts', or 'course material' - just answer naturally\n"
                 "- If answering from general knowledge when course-specific info was expected, briefly note: 'This wasn't explicitly in your materials, but...'\n"
                 "- Be conversational and helpful, like a knowledgeable tutor"

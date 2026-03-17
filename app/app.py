@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import main as m
 from schemas import AddSourcePost, ChatPost, RegisterPost, LoginPost, CoursePost
@@ -11,6 +12,12 @@ import os
 SECRET_KEY = os.getenv("ENCODING_KEY")
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 security = HTTPBearer()
 
 # Initialize database on startup
@@ -93,7 +100,6 @@ def login(p : LoginPost):
 
 
 
-
 @app.post("/add-source")
 def add_source(p: AddSourcePost, user_id : int = Depends(get_current_user_id)): #use depends to inject current user_id into endpoint
     try:
@@ -118,9 +124,14 @@ def chat(p: ChatPost, user_id : int = Depends(get_current_user_id)):
     try:
         response =  m.chat_api(user_id, p.message, p.conversation_id)
         return response
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid value type")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
+
+@app.post("/new-conversation")
+def new_conversation(user_id: int = Depends(get_current_user_id)):
+    conversation_id = db.start_conversation(user_id)
+    return {"conversation_id": conversation_id}
 
 @app.post("/add-course")
 def add_course(p : CoursePost, user_id : int = Depends(get_current_user_id)):

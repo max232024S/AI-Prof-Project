@@ -9,7 +9,7 @@ class AddSourcePost(BaseModel):
 
 class ChatPost(BaseModel):
     message : str
-    conversation_id : Optional[int] = None
+    conversation_id : int
 
 class RegisterPost(BaseModel):
     first_name : str

@@ -77,7 +77,7 @@ class db:
 
 
 
-    def load_memory(user_id):
+    def load_memory(user_id, conversation_id):
         conn = sqlite3.connect('ai_prof.db')
         conn.row_factory = sqlite3.Row #allows dictionary access columns by col name
         cursor = conn.cursor()
@@ -86,12 +86,12 @@ class db:
                 cursor.execute('''SELECT message_text, message_role FROM Message
                 INNER JOIN Conversation ON Message.conversation_id = Conversation.conversation_id
                 INNER JOIN User ON Conversation.user_id = User.user_id
-                WHERE USER.user_id = ? 
+                WHERE User.user_id = ? AND Conversation.conversation_id = ?
                 ORDER BY message_id DESC LIMIT 8 ''',
-                (user_id,))
+                (user_id, conversation_id))
                 mem = cursor.fetchall()
                 mem = mem[::-1] #reverse to feed it the most recent queries/responses first
-                
+
                 return [dict(row) for row in mem]
         finally:
             conn.close()
@@ -156,6 +156,9 @@ class db:
                                
 
     def load_similar_chunks(user_id, chunk_ids): #chunk_ids is list output from k_similar chunks
+        if len(chunk_ids) == 0:
+            return []
+        
         conn = sqlite3.connect('ai_prof.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()

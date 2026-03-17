@@ -44,6 +44,9 @@ def run(role, content, model="google/gemini-2.0-flash-001"):
 def embed(chunks): #returns list of arrays of embeddings - note these need to be converted to BLOBS before INSERTION
     url = "https://openrouter.ai/api/v1/embeddings"
 
+    if isinstance(chunks, str):
+        chunks = [chunks]
+
     payload = {
         "input": chunks,
         "model": "text-embedding-3-large"
